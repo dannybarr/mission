@@ -1,4 +1,21 @@
 import { test, expect } from "@playwright/test";
+test("memory page offers a useful gap and retires it after capture", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Explore Mission" }).click();
+  await page.getByRole("button", { name: "Memory", exact: true }).click();
+  const suggestion = page.getByRole("region", { name: "Memory suggestion" });
+  await expect(suggestion).toContainText("What name should Mission use");
+  await suggestion.getByRole("button", { name: "Add this memory" }).click();
+  await expect(page.getByLabel("Domain").last()).toHaveValue("identity");
+  await page.getByLabel("In your words").fill("Call me Pilot. Synthetic context.");
+  await page.getByRole("button", { name: "Save memory" }).click();
+  await expect(suggestion).not.toContainText("What name should Mission use");
+  await expect(suggestion).toContainText("how do you like to work");
+  await page.locator("#domain-filter").selectOption("health");
+  await expect(suggestion).toContainText("health context");
+  await page.locator("#domain-filter").selectOption("identity");
+  await expect(suggestion).toHaveCount(0);
+});
 test("file import waits for review and can be kept or dismissed", async ({
   page,
 }) => {

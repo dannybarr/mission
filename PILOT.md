@@ -8,6 +8,8 @@
 6. Ask Claude to search/read an allowed fact. Verify an ungranted domain is withheld. Revoke the grant and repeat. Pull the USB and repeat; new reads should fail. Previously received text cannot be recalled from Claude.
 7. Unlocking a new session requires generating fresh MCP credentials and updating Claude configuration.
 
+After removing the USB, the app clears the open session. When the same vault returns, including under a different drive letter, it should be recognised as an existing Mission and show **Unlock vault**. Enter the original passphrase; stored memories and grants should reappear without repeating onboarding. The passphrase and agent credentials are intentionally not remembered by the laptop. If two Mission vaults are attached, choose the correct one from the device list. Confirm the new MCP configuration before testing an agent again.
+
 Use ordinary, replaceable facts for this pilot. OS memory locking is not established on this machine. Email/calendar/camera/health connections are planned and are labelled unavailable. The executable is an unsigned Windows development build and depends on the local workspace adapter script; it is not a portable installer.
 
 ## Optional hosted AI pilot

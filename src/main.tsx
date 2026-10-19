@@ -8,6 +8,7 @@ import "@fontsource/handjet/600.css";
 import "@fontsource/handjet/700.css";
 import "./styles.css";
 import "./reference-design.css";
+import "./readability.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

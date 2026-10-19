@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import * as bridge from "./bridge";
 import { agentSetup, formatAgentConfig } from "./agent-setup";
+import { chooseDevice } from "./device-selection";
+import { missingMemoryQuestions } from "./memory-gaps";
 import { Onboarding } from "./Onboarding";
 import { RequestyPilot } from "./RequestyPilot";
 import {
@@ -70,9 +72,9 @@ export function App() {
     [available, setAvailable] = useState<Device[]>([]),
     [device, setDevice] = useState("");
   const [pass, setPass] = useState(""),
-    [create, setCreate] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [gapCursor, setGapCursor] = useState(0);
   const [domain, setDomain] = useState("all"),
     [query, setQuery] = useState(""),
     [selected, setSelected] = useState<string | null>(null);
@@ -229,11 +231,13 @@ export function App() {
     };
   }, []);
   useEffect(() => {
-    if (!device && available.length === 1) {
-      setDevice(available[0].id);
-      setCreate(!available[0].hasVault);
+    if (open) return;
+    const next = chooseDevice(available, device);
+    if (next !== device) {
+      setDevice(next);
+      setPass("");
     }
-  }, [available, device]);
+  }, [available, device, open]);
   useEffect(() => {
     if (!open || demo) return;
     let running = false;
@@ -268,13 +272,14 @@ export function App() {
     setError("");
     const generation = epoch.current;
     try {
-      await bridge.unlock(device, pass, create);
+      if (!selectedDevice) throw new Error("Device is no longer available");
+      await bridge.unlock(device, pass, !selectedDevice.hasVault);
       setPass("");
       const next = await bridge.snapshot();
       if (generation === epoch.current) {
         setData(next);
         setOpen(true);
-        setOnboarding(next.items.length === 0);
+        setOnboarding(create && next.items.length === 0);
       }
     } catch {
       setError(
@@ -361,6 +366,12 @@ export function App() {
       `${i.title} ${i.body}`.toLowerCase().includes(query.toLowerCase()),
   );
   const item = data.items.find((i) => i.id === selected);
+  const selectedDevice = available.find((d) => d.id === device);
+  const create = selectedDevice ? !selectedDevice.hasVault : false;
+  const missingQuestions = missingMemoryQuestions(data.items);
+  const gapQuestion = domain === "all"
+    ? missingQuestions[gapCursor % missingQuestions.length]
+    : missingQuestions.find((question) => question.domain === domain);
 
   if (!open)
     return (
@@ -394,9 +405,7 @@ export function App() {
                   value={device}
                   onChange={(e) => {
                     setDevice(e.target.value);
-                    setCreate(
-                      !available.find((d) => d.id === e.target.value)?.hasVault,
-                    );
+                    setPass("");
                   }}
                 >
                   <option value="">
@@ -411,8 +420,11 @@ export function App() {
                   ))}
                 </select>
               </label>
-              {device && (
+              {selectedDevice && (
                 <>
+                  {selectedDevice.hasVault && (
+                    <p className="returning-card">Welcome back. Your memory is on this device. Enter your passphrase to pick up where you left off.</p>
+                  )}
                   <label>
                     Passphrase
                     <input
@@ -844,6 +856,19 @@ export function App() {
                   <Plus size={16} /> Add memory
                 </button>
               </div>
+              {gapQuestion && (
+                <section className="memory-gap" aria-label="Memory suggestion">
+                  <div>
+                    <span className="eyebrow">A good next memory</span>
+                    <h2>{gapQuestion.question}</h2>
+                    <p>There is no memory in this area yet. Add a few words now, or come back to it later.</p>
+                  </div>
+                  <div className="memory-gap-actions">
+                    <button className="primary" onClick={() => setEditor(newItem(gapQuestion.title, "", gapQuestion.domain))}>Add this memory <ArrowUpRight size={16} /></button>
+                    {domain === "all" && missingQuestions.length > 1 && <button className="secondary" onClick={() => setGapCursor((cursor) => cursor + 1)}>Another topic</button>}
+                  </div>
+                </section>
+              )}
               <div className="memory-toolbar">
                 <label className="search">
                   <Search size={17} />

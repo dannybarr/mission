@@ -1,0 +1,91 @@
+/* Reading copy uses strong ink. Heading and brand colours keep their own hierarchy. */
+body {
+  font-size: 18px;
+}
+p,
+.memory-body,
+.requesty-disclosure,
+.interview-fields label > span {
+  color: #101010;
+  font-size: 19px;
+  line-height: 1.55;
+}
+.page-heading p,
+.empty p,
+.locked-copy p,
+.daily-brief p,
+.source-card p,
+.domain-card p,
+.memory-gap p,
+.onboarding p,
+.requesty-panel p {
+  color: #101010;
+  font-size: 19px;
+  line-height: 1.55;
+}
+.small,
+small,
+.onboarding-preview,
+.onboarding-header > span,
+.onboarding-steps li,
+.metadata > div {
+  font-size: 16px;
+  line-height: 1.45;
+}
+.eyebrow,
+.memory-row .eyebrow {
+  font-size: 14px;
+}
+.memory-row p,
+.onboarding-intro p {
+  color: #101010;
+  font-size: 18px;
+}
+input,
+textarea,
+select,
+.memory-toolbar input,
+.mcp-setup textarea {
+  font-size: 18px;
+}
+.returning-card {
+  max-width: 420px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--blue);
+  background: #f1f4fd;
+}
+.memory-gap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 22px 26px;
+  margin: 0 0 22px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--blue);
+  border-radius: 8px;
+  background: #fff;
+}
+.memory-gap h2 {
+  margin: 5px 0 6px;
+  max-width: 700px;
+  font-size: clamp(22px, 2vw, 27px);
+}
+.memory-gap p {
+  max-width: 700px;
+}
+.memory-gap-actions {
+  display: flex;
+  flex: none;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.memory-gap-actions button {
+  white-space: nowrap;
+}
+@media (max-width: 1050px) {
+  .memory-gap {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
