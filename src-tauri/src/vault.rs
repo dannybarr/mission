@@ -202,6 +202,16 @@ impl Vault {
             audit,
         })
     }
+    pub fn owner_item(&self, id: uuid::Uuid) -> Result<Item> {
+        self.check()?;
+        let raw: Option<String> = self.connection.query_row(
+            "SELECT json FROM items WHERE id=?1", [id.to_string()], |r| r.get(0)
+        ).optional()?;
+        let raw = Zeroizing::new(raw.ok_or(Error::Invalid)?);
+        let item = serde_json::from_str(&raw)?;
+        self.check()?;
+        Ok(item)
+    }
     pub fn save_item(&mut self, item: Item) -> Result<()> {
         self.check()?;
         item.validate()?;
@@ -292,6 +302,21 @@ impl Vault {
 mod tests {
     use super::*;
     const PASS: &[u8] = b"four long words for tests only";
+    #[test]
+    fn owner_selected_read_uses_current_vault_item() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut vault = Vault::create(dir.path(), PASS).unwrap();
+        let original = item();
+        let id = original.id;
+        vault.save_item(original.clone()).unwrap();
+        assert_eq!(vault.owner_item(id).unwrap().body, original.body);
+        assert!(matches!(vault.owner_item(uuid::Uuid::new_v4()), Err(Error::Invalid)));
+        let mut updated = original;
+        updated.version = 2;
+        updated.body = "Updated synthetic context".into();
+        vault.save_item(updated).unwrap();
+        assert_eq!(vault.owner_item(id).unwrap().body, "Updated synthetic context");
+    }
     #[test]
     fn onboarding_batch_is_atomic_and_starts_without_grants() {
         let dir=tempfile::tempdir().unwrap();let mut v=Vault::create(dir.path(),PASS).unwrap();

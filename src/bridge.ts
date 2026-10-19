@@ -30,6 +30,22 @@ export async function revokeAll(): Promise<void> {
 export async function mcpConfig(agent: string): Promise<unknown> {
   return invoke("mcp_config", { agent });
 }
+export async function setRequestyKey(key: string): Promise<void> {
+  return invoke("set_requesty_key", { key });
+}
+export async function requestyStatus(): Promise<boolean> {
+  return invoke("requesty_status");
+}
+export async function requestyModels(): Promise<string[]> {
+  return invoke("requesty_models");
+}
+export async function requestyAsk(
+  model: string,
+  question: string,
+  ids: string[],
+): Promise<string> {
+  return invoke("requesty_ask", { model, question, ids });
+}
 export async function lock(): Promise<void> {
   if (native) await invoke("lock");
 }

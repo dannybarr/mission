@@ -9,3 +9,9 @@
 7. Unlocking a new session requires generating fresh MCP credentials and updating Claude configuration.
 
 Use ordinary, replaceable facts for this pilot. OS memory locking is not established on this machine. Email/calendar/camera/health connections are planned and are labelled unavailable. The executable is an unsigned Windows development build and depends on the local workspace adapter script; it is not a portable installer.
+
+## Optional hosted AI pilot
+
+Requesty integration is available after unlocking the USB vault. In AI, enter the API key in the native app, discover model IDs or enter a configured Requesty policy/model ID, select up to 12 memory items, inspect the exact question and context, then approve each request. The key is held in the desktop process for the current vault session and cleared on lock or detected disconnect. It is not written to the vault or repository. A network request sends the selected content and question to Requesty and its model provider; information already sent cannot be recalled. Answers are ephemeral unless the user opens a memory draft and saves it. Model listing is a catalogue; the key's actual permissions are checked by Requesty when a model is used. The build and UI have been tested locally without a live user key, so live Requesty authentication and model use remain to be verified during the pilot.
+
+The Requesty API uses https://router.requesty.ai/v1. The app calls /models and /chat/completions using the native backend. Official reference: https://docs.requesty.ai/ . Local Ollama remains future work.

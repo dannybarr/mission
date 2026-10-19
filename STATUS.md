@@ -1,13 +1,15 @@
 # Mission Core pilot status — 19 October 2026
 
-Implemented: empty vault and browser preview; globe identity; locally bundled Handjet 300–700; cream and blue-haze design; five-step interview, memory export prompt, text/JSON imports and explicit review before atomic saving; default-deny agent permissions; read-only MCP adapter for Claude Desktop.
+Mission Core is an unsigned Windows desktop pilot, not a production security release. The native app builds and opens. The browser at http://127.0.0.1:1420 is a temporary design preview and cannot use a USB vault.
 
-Verified this run: production frontend build, 18 policy/model tests, seven browser flows, one Node MCP adapter integration test, and 25 Rust vault/policy/session/bridge tests passed. Windows desktop executable compiled with current frontend. Updated design captures are in artifacts/.
+Implemented: empty device-owned encrypted vault; no Mission account; globe identity, Handjet, cream/blue-haze interface; five-step reviewed onboarding; text/Markdown/JSON imports; human memory editor and history; default-deny per-agent grants; read-only MCP search/get with separate agent credentials; setup formats for Claude Desktop, Codex, Cursor, Gemini CLI, GitHub Copilot in VS Code and generic stdio clients.
 
-Run pilot/mission-core.exe for USB testing. Browser preview at http://127.0.0.1:1420 is temporary and cannot access a real vault. See PILOT.md.
+Hosted AI pilot: Requesty key entered after USB unlock in the AI page, held in native session memory, cleared on lock or detected disconnect. The app retrieves a model catalogue or accepts a Requesty model/policy ID. Each request requires a question, explicit memory selection, payload review and consent. Responses stay temporary unless opened as a memory draft and manually saved. The Requesty key is not saved to the USB, app settings or Git. The selected context and question leave the device when Ask is pressed. Model listing does not prove a given key can use each listed model.
 
-Remaining: physical USB onboarding and removal tests, real Claude Desktop connection, OS write tracing and recovery. Email, calendar, camera and health integrations remain unavailable. No seeded personal memory or real account connections are included.
+Verified locally: production frontend build; 22 TypeScript tests; 8 Playwright browser flows; 26 Rust native tests; Node MCP adapter integration test; Windows native compile and executable build. Desktop key-entry and Requesty response paths have not been exercised with a real key because none was supplied. Browser tests cannot prove native USB and hosted API behaviour.
 
-Security limits: SQLCipher reported VirtualLock error 1453, so locked RAM and absence of pagefile copies are not established. The GNU development build also emitted a multiple-manifests linker warning. This is an unsigned development pilot, not a production security release. A lease check does not prove a physical one-second unplug guarantee. Agents may retain data already received.
+Remaining pilot gates: physical USB creation/onboarding/removal tests, live Requesty call, live agent interoperability, OS write tracing and recovery. Email, calendar, camera and health connectors, local laptop AI, signed installer and updates remain unfinished. No removable drive was detected during this build.
 
-Multi-agent update: tailored configuration for Claude Desktop, Codex, Cursor, Gemini CLI, GitHub Copilot (VS Code), and generic local stdio clients. Permission-only profiles remain explicit for unverified adapters. Frontend build, 22 unit tests and seven browser tests passed. Live client interoperability still requires pilot testing.
+Security limitations: SQLCipher reported VirtualLock error 1453, so locked RAM and absence of pagefile copies cannot be claimed. The GNU development build emitted a multiple-manifests linker warning. A lease check is not proof of the physical one-second unplug target. Already transmitted content can remain with a model provider or agent.
+
+See PILOT.md and SECURITY.md. No API key, seed memory, real account connection or compiled binary is committed.

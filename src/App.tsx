@@ -28,6 +28,7 @@ import {
 import * as bridge from "./bridge";
 import { agentSetup, formatAgentConfig } from "./agent-setup";
 import { Onboarding } from "./Onboarding";
+import { RequestyPilot } from "./RequestyPilot";
 import {
   agents,
   domains,
@@ -43,10 +44,17 @@ import {
 } from "./model";
 
 type Page =
-  "Overview" | "Memory" | "Agents" | "Review inbox" | "Sources" | "Security";
+  | "Overview"
+  | "Memory"
+  | "AI"
+  | "Agents"
+  | "Review inbox"
+  | "Sources"
+  | "Security";
 const navigation = [
   ["Overview", Compass],
   ["Memory", BookOpen],
+  ["AI", Command],
   ["Agents", Users],
   ["Review inbox", Inbox],
   ["Sources", Link2],
@@ -503,7 +511,7 @@ export function App() {
             }
             if (generation === epoch.current) {
               setOnboarding(false);
-              setPage("Agents");
+              setPage("AI");
             }
           }}
         />
@@ -661,13 +669,16 @@ export function App() {
                   <p>
                     {demo
                       ? "Your morning focus, the habits you return to, the things you want to build. Bring those details together, then decide which parts your assistants can use."
-                      : "Add a few useful facts or preferences. Local AI briefs will appear here once the Ollama integration is available."}
+                      : "Add a few useful facts or preferences. For this pilot, you can ask a hosted model about selected memories below."}
                   </p>
                   <button
                     className="text-button"
                     onClick={() => setEditor(newItem("", "", "identity"))}
                   >
                     Add something about yourself <Plus size={15} />
+                  </button>
+                  <button className="text-button" onClick={() => setPage("AI")}>
+                    Try hosted AI <ArrowUpRight size={15} />
                   </button>
                   <div className="brief-footer">
                     <span className="line-icon">
@@ -680,7 +691,7 @@ export function App() {
                       <small>
                         {demo
                           ? "No AI analysis has run."
-                          : "No cloud inference."}
+                          : "Hosted AI runs only when you approve a request."}
                       </small>
                     </span>
                   </div>
@@ -805,6 +816,14 @@ export function App() {
                 ))}
               </section>
             </>
+          )}
+
+          {page === "AI" && (
+            <RequestyPilot
+              items={data.items}
+              preview={demo}
+              onDraft={setEditor}
+            />
           )}
 
           {page === "Memory" && (
@@ -1436,6 +1455,10 @@ export function App() {
                     "Sleep, recovery and activity. A later integration.",
                   ],
                   ["Ollama", "A chief of staff that runs on your own machine."],
+                  [
+                    "Requesty",
+                    "Optional hosted AI pilot. Add a key and select memory in Overview.",
+                  ],
                 ].map(([title, description]) => (
                   <section className="source-card" key={title}>
                     <div className="source-icon">
@@ -1443,7 +1466,9 @@ export function App() {
                     </div>
                     <h2>{title}</h2>
                     <p>{description}</p>
-                    <span className="tag">Planned</span>
+                    <span className="tag">
+                      {title === "Requesty" ? "Pilot" : "Planned"}
+                    </span>
                   </section>
                 ))}
               </div>
@@ -1496,7 +1521,7 @@ export function App() {
                 ],
                 [
                   "External services",
-                  "No telemetry, remote agent transport or account connections are enabled.",
+                  "No telemetry or account connections are enabled. Requesty receives a question and selected memory only after you approve an individual hosted AI request.",
                 ],
               ].map(([title, description]) => (
                 <div className="security-row" key={title}>

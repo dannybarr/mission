@@ -45,6 +45,7 @@ The app discovers removable volumes. It will not create a vault at an arbitrary 
 - Tests for wrapping, incorrect passphrases, manifest tampering, overwrite prevention, encrypted database header, and removal denial.
 - Text/Markdown and Mission JSON import staging; individual review acceptance/dismissal; encrypted revision history and restore-as-new-revision controls. Native storage tests pass; physical USB validation remains pending.
 - Monotonic session leases and epoch checks to deny expired requests independently of blocked storage I/O.
+- Per-agent read-only MCP bridge and client setup; hosted Requesty pilot with session-only key, explicit selected-context review and per-request approval.
 
 ## Not implemented
 
@@ -54,4 +55,4 @@ See [ARCHITECTURE.md](ARCHITECTURE.md), [SECURITY.md](SECURITY.md), [MCP.md](MCP
 
 ## Windows pilot
 
-The desktop executable is built at pilot/mission-core.exe. See [PILOT.md](PILOT.md) for device onboarding and the read-only Claude Desktop MCP setup. Current verification results and limits are in [STATUS.md](STATUS.md).
+The desktop executable is built at pilot/mission-core.exe. See [PILOT.md](PILOT.md) for device onboarding, Requesty key entry in the AI page, and agent MCP setup. Current verification results and limits are in [STATUS.md](STATUS.md).

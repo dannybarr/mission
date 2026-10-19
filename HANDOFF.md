@@ -18,12 +18,14 @@ Read README.md, STATUS.md, SECURITY.md, MCP.md and PILOT.md. Frontend: React/Typ
 
 Handjet is bundled locally. Globe logo, cream canvas and blue haze follow user direction. Empty onboarding collects identity, work, goals and routines, offers a memory export prompt, imports text/Markdown/JSON, and requires review before atomic saving to the USB. Agent access defaults to none. MCP is read-only search/get, with per-agent credentials, grants and session epochs. Setup formats exist for Claude Desktop, Codex, Cursor, Gemini CLI, GitHub Copilot in VS Code and generic local stdio clients. Other profiles must remain clearly marked adapter pending.
 
-## Next authorized work: hosted AI pilot
+## Hosted AI pilot
 
-The user has a Requesty API key restricted to approved models and says models are already configured. No key has been supplied or stored. Requesty integration is NOT implemented. Verify Requesty's current routing/model discovery API rather than repeatedly asking the user to name a model. Add in-app key entry, approved-model selection or configured routing, explicit context consent and a reviewed proposal flow. Prefer session-only credentials; any persisted secret must be encrypted on the USB. Never log credentials or memory, or commit them. Hosted inference sends selected context off device and must be disclosed honestly. Local laptop inference comes later.
+The user has a Requesty API key restricted to approved models and says models are configured. The app now asks for the key in the unlocked native AI page, lists Requesty models or accepts a configured policy ID, and sends only explicitly selected memory after per-request approval. No key has been supplied or stored in this workspace. Live authenticated calls remain untested. Never log credentials or memory, or commit them. Hosted inference sends selected context off device. Local laptop inference comes later.
 
 ## Verification and remaining gates
 
-Latest multi-agent revision: frontend and Windows native builds pass; 22 TypeScript unit tests and seven browser tests pass. Previous backend revision: 25 Rust tests and one Node adapter test pass. No real USB or live external-agent test has been performed. SQLCipher VirtualLock error 1453 means locked RAM cannot be claimed on this host. Physical unplug timing, OS write tracing, recovery and signed packaging remain unverified or unfinished. Email, calendar, camera and health connectors are not implemented. Do not claim the complete product is production-ready.
+Latest revision: frontend and Windows native builds pass; 22 TypeScript unit tests, eight browser flows, 26 Rust tests and one Node adapter test pass. No real USB or live external-agent test has been performed. SQLCipher VirtualLock error 1453 means locked RAM cannot be claimed on this host. Physical unplug timing, OS write tracing, recovery and signed packaging remain unverified or unfinished. Email, calendar, camera and health connectors are not implemented. Do not claim the complete product is production-ready.
 
 Do not seed personal memories, format drives, enable broad agent access by default, or represent a configuration as a verified connection. Preserve review before saving imports and AI proposals.
+
+Requesty pilot is now implemented. The key is entered inside the unlocked native app and held for that session. The owner chooses a model or policy and approves selected memory for each call. The resulting answer is temporary unless reviewed and saved. See PILOT.md. No live Requesty call or physical USB test is claimed yet.

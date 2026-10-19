@@ -38,3 +38,7 @@ Until a private reporting channel is established, provide reproducible findings 
 ## Windows pilot observations
 
 25 native tests pass. SQLCipher reports VirtualLock error 1453 on this host; page locking is not established. The executable is an unsigned GNU development build with a multiple-manifests linker warning. Physical unplug timing, host write tracing and live Claude testing remain acceptance gates.
+
+## Requesty pilot
+
+The optional hosted AI pilot uses Requesty's OpenAI-compatible endpoint. The API key is held in native process memory for the unlocked vault session, never persisted. The owner selects which memory items to send and approves each request. Returned text is temporary until manually reviewed and saved as a new memory. The model catalogue may include models the key cannot access; Requesty enforces the key's restrictions on the actual call. Hosted context and prompts may remain with external providers after the vault is locked. Local inference is a separate future milestone.
