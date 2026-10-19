@@ -1,0 +1,6 @@
+{
+  "identifier": "main-window",
+  "description": "Local interface, no filesystem, shell or HTTP plugin permissions.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

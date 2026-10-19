@@ -1,0 +1,39 @@
+[package]
+name = "mission-core"
+version = "0.1.0"
+edition = "2021"
+[lib]
+name = "mission_core"
+crate-type = ["rlib"]
+[[bin]]
+name = "mission-core"
+path = "src/main.rs"
+required-features = ["desktop"]
+[features]
+default = ["storage"]
+storage = ["dep:rusqlite", "dep:sysinfo"]
+desktop = ["storage", "dep:tauri", "dep:tauri-build"]
+[build-dependencies]
+tauri-build = { version = "2", features = [], optional = true }
+[dependencies]
+tauri = { version = "2", features = [], optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+argon2 = { version = "0.5", features = ["zeroize"] }
+aes-gcm = "0.10"
+rand = "0.8"
+zeroize = { version = "1", features = ["derive"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+hex = "0.4"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+rusqlite = { version = "0.38", features = ["bundled-sqlcipher-vendored-openssl"], optional = true }
+sysinfo = { version = "0.38", default-features = false, features = ["disk"], optional = true }
+[dev-dependencies]
+tempfile = "3"
+[profile.release]
+panic = "abort"
+strip = true
+lto = true
+codegen-units = 1

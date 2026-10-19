@@ -1,0 +1,23 @@
+node_modules/
+dist/
+target/
+.tools/
+test-results/
+playwright-report/
+*.log
+*.tsbuildinfo
+
+pilot/
+
+# Local-only data and tooling
+missionsi-web/
+artifacts/
+src-tauri/gen/
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.db
+*.db-journal
+*.sqlite*
