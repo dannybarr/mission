@@ -24,6 +24,8 @@ pub enum Error {
     Denied,
     #[error("Invalid vault or passphrase")]
     Crypto,
+    #[error("Passphrase did not unlock this Mission card")]
+    Passphrase,
     #[error("Invalid input")]
     Invalid,
     #[error("Storage operation failed")]

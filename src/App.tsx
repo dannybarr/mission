@@ -31,6 +31,7 @@ import { agentSetup, formatAgentConfig } from "./agent-setup";
 import { chooseDevice } from "./device-selection";
 import { missingMemoryQuestions } from "./memory-gaps";
 import { Onboarding } from "./Onboarding";
+import { unlockError } from "./unlock-error";
 import { RequestyPilot } from "./RequestyPilot";
 import {
   agents,
@@ -302,9 +303,11 @@ export function App() {
     setBusy(true);
     setError("");
     const generation = epoch.current;
+    let unlocked = false;
     try {
       if (!selectedDevice) throw new Error("Device is no longer available");
       await bridge.unlock(device, pass, !selectedDevice.hasVault);
+      unlocked = true;
       setPass("");
       const next = await bridge.snapshot();
       if (generation === epoch.current) {
@@ -312,10 +315,11 @@ export function App() {
         setOpen(true);
         setOnboarding(create && next.items.length === 0);
       }
-    } catch {
-      setError(
-        "Could not open this vault. Check the device and passphrase, then try again.",
-      );
+    } catch (err) {
+      if (unlocked) await bridge.lock().catch(() => {});
+      setError(unlocked
+        ? "The card opened, but its memory could not be displayed. No memory was reset."
+        : unlockError(err));
       setPass("");
     } finally {
       setBusy(false);

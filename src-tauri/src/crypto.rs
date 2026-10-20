@@ -125,7 +125,7 @@ impl Manifest {
                         aad: &aad,
                     },
                 )
-                .map_err(|_| Error::Crypto)?,
+                .map_err(|_| Error::Passphrase)?,
         );
         if plaintext.len() != 32 {
             return Err(Error::Crypto);
@@ -142,7 +142,7 @@ mod tests {
     fn wrapping_round_trip_and_wrong_passphrase() {
         let (m, key) = Manifest::create(b"a sufficiently long passphrase").unwrap();
         assert_eq!(*key, *m.unlock(b"a sufficiently long passphrase").unwrap());
-        assert!(m.unlock(b"a different passphrase").is_err());
+        assert!(matches!(m.unlock(b"a different passphrase"), Err(Error::Passphrase)));
     }
     #[test]
     fn tampered_manifest_is_rejected() {
