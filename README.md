@@ -46,10 +46,11 @@ The app discovers removable volumes. It will not create a vault at an arbitrary 
 - Text/Markdown and Mission JSON import staging; individual review acceptance/dismissal; encrypted revision history and restore-as-new-revision controls. Native storage tests pass; physical USB validation remains pending.
 - Monotonic session leases and epoch checks to deny expired requests independently of blocked storage I/O.
 - Per-agent read-only MCP bridge and client setup; hosted Requesty pilot with session-only key, explicit selected-context review and per-request approval.
+- Passphrase-confirmed reset in Security that revokes the session and removes only Mission vault files from the USB before fresh onboarding.
 
 ## Not implemented
 
-Summaries, agent-originated proposals, Ollama, connectors, Sensitive's second unlock, recovery, OS device-event subscriptions, hardware identity binding, global capture hotkey, tray, encrypted export, graph/timeline, deletion/undo, signed updates and signed installers. The UI labels unavailable capabilities instead of simulating connections.
+Summaries, agent-originated proposals, Ollama, connectors, Sensitive's second unlock, recovery, OS device-event subscriptions, hardware identity binding, global capture hotkey, tray, encrypted export, graph/timeline, per-item deletion/undo, signed updates and signed installers. The UI labels unavailable capabilities instead of simulating connections.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md), [SECURITY.md](SECURITY.md), [MCP.md](MCP.md), and [STATUS.md](STATUS.md).
 

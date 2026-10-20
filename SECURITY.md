@@ -37,7 +37,7 @@ Until a private reporting channel is established, provide reproducible findings 
 
 ## Windows pilot observations
 
-25 native tests pass. SQLCipher reports VirtualLock error 1453 on this host; page locking is not established. The executable is an unsigned GNU development build with a multiple-manifests linker warning. Physical unplug timing, host write tracing and live Claude testing remain acceptance gates.
+28 native tests pass. SQLCipher reports VirtualLock error 1453 on this host; page locking is not established. The executable is an unsigned GNU development build with a multiple-manifests linker warning. Physical unplug timing, host write tracing and live Claude testing remain acceptance gates. The reset command has synthetic-directory tests; physical removable-media reset still needs validation. Deleting files from flash storage does not guarantee forensic erasure.
 
 ## Requesty pilot
 

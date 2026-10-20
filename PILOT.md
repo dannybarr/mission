@@ -10,6 +10,8 @@
 
 After removing the USB, the app clears the open session. When the same vault returns, including under a different drive letter, it should be recognised as an existing Mission and show **Unlock vault**. Enter the original passphrase; stored memories and grants should reappear without repeating onboarding. The passphrase and agent credentials are intentionally not remembered by the laptop. If two Mission vaults are attached, choose the correct one from the device list. Confirm the new MCP configuration before testing an agent again.
 
+To restart a demo, unlock the vault and open **Security → Danger zone**. Turn on the reset switch, enter the current passphrase, type `RESET`, then choose **Wipe Mission vault**. This removes only the `mission` folder on the selected USB, including memories, grants, history and audit records. The app revokes the current agent session and returns to **Create vault**; creating the new vault starts onboarding. Other files on the stick are preserved. File deletion is not a guaranteed secure erase on flash storage, and material already sent to agents or Requesty cannot be recalled. Never use this control on a vault you cannot afford to lose.
+
 Use ordinary, replaceable facts for this pilot. OS memory locking is not established on this machine. Email/calendar/camera/health connections are planned and are labelled unavailable. The executable is an unsigned Windows development build and depends on the local workspace adapter script; it is not a portable installer.
 
 ## Optional hosted AI pilot

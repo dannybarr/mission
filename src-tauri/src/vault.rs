@@ -161,6 +161,58 @@ impl Vault {
         }
         Ok(())
     }
+    pub(crate) fn root(&self) -> &Path {
+        &self.root
+    }
+    pub(crate) fn reset_challenge(&self) -> Result<Vec<u8>> {
+        self.check()?;
+        Ok(self.manifest_bytes.clone())
+    }
+    pub(crate) fn authorize_reset(manifest_bytes: &[u8], passphrase: &[u8]) -> Result<()> {
+        let manifest: Manifest = serde_json::from_slice(manifest_bytes)?;
+        manifest.unlock(passphrase)?;
+        Ok(())
+    }
+    // Call only after the session lease and agent credentials have been revoked.
+    // This removes Mission's files, not other content on the removable volume.
+    pub(crate) fn delete_verified(self) -> Result<()> {
+        self.check()?;
+        let root = self.root.clone();
+        let expected_manifest = self.manifest_bytes.clone();
+        let dir = root.join("mission");
+        let allowed = [
+            "manifest.json", "vault.db", "vault.db-journal", "vault.db-wal", "vault.db-shm",
+        ];
+        let mut files = Vec::new();
+        for entry in fs::read_dir(&dir)? {
+            let entry = entry?;
+            let name = entry.file_name();
+            let name = name.to_str().ok_or(Error::Denied)?;
+            if !allowed.contains(&name) || !entry.file_type()?.is_file() {
+                return Err(Error::Denied);
+            }
+            device::check_child(&root, &entry.path())?;
+            files.push((name.to_owned(), entry.path()));
+        }
+        drop(self); // Close SQLCipher before removing its database on Windows.
+        device::check_child(&root, &dir)?;
+        if read_manifest(&dir.join("manifest.json"))? != expected_manifest {
+            return Err(Error::Locked);
+        }
+        for (name, path) in &files {
+            if path.try_exists()? {
+                device::check_child(&root, path)?;
+            } else if name == "manifest.json" || name == "vault.db" {
+                return Err(Error::Locked);
+            }
+        }
+        for (_, path) in files.iter().filter(|(name, _)| name != "manifest.json") {
+            if path.try_exists()? { fs::remove_file(path)?; }
+        }
+        fs::remove_file(dir.join("manifest.json"))?;
+        fs::remove_dir(dir)?;
+        Ok(())
+    }
     pub fn snapshot(&self) -> Result<Snapshot> {
         self.check()?;
         let mut stmt = self
@@ -373,6 +425,35 @@ mod tests {
             before,
             fs::read(dir.path().join("mission/manifest.json")).unwrap()
         );
+    }
+    #[test]
+    fn reset_rejects_wrong_passphrase_and_allows_fresh_onboarding() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("unrelated.txt"), b"keep this").unwrap();
+        let mut vault = Vault::create(dir.path(), PASS).unwrap();
+        let first_manifest = fs::read(dir.path().join("mission/manifest.json")).unwrap();
+        vault.save_item(item()).unwrap();
+        let challenge = vault.reset_challenge().unwrap();
+        assert!(Vault::authorize_reset(&challenge, b"wrong passphrase").is_err());
+        assert_eq!(vault.snapshot().unwrap().items.len(), 1);
+        Vault::authorize_reset(&challenge, PASS).unwrap();
+        vault.delete_verified().unwrap();
+        assert!(!dir.path().join("mission").exists());
+        assert_eq!(fs::read(dir.path().join("unrelated.txt")).unwrap(), b"keep this");
+        let fresh = Vault::create(dir.path(), PASS).unwrap();
+        assert!(fresh.snapshot().unwrap().items.is_empty());
+        assert_ne!(fs::read(dir.path().join("mission/manifest.json")).unwrap(), first_manifest);
+    }
+    #[test]
+    fn reset_refuses_unexpected_files_without_deleting_memory() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut vault = Vault::create(dir.path(), PASS).unwrap();
+        vault.save_item(item()).unwrap();
+        fs::write(dir.path().join("mission/unknown.txt"), b"not a Mission file").unwrap();
+        let challenge = vault.reset_challenge().unwrap();
+        Vault::authorize_reset(&challenge, PASS).unwrap();
+        assert!(matches!(vault.delete_verified(), Err(Error::Denied)));
+        assert_eq!(Vault::open(dir.path(), PASS).unwrap().snapshot().unwrap().items.len(), 1);
     }
     #[test]
     fn database_is_not_plaintext_sqlite() {

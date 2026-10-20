@@ -49,6 +49,10 @@ export async function requestyAsk(
 export async function lock(): Promise<void> {
   if (native) await invoke("lock");
 }
+export async function resetVault(deviceId: string, passphrase: string): Promise<void> {
+  if (!native) throw new Error("Open the desktop app to reset a real vault.");
+  await invoke("reset_vault", { deviceId, passphrase });
+}
 export async function stageImport(items: MemoryItem[]): Promise<void> {
   await invoke("stage_import", { items });
 }

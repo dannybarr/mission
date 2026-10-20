@@ -107,6 +107,54 @@ async fn unlock(
     .map_err(|_| Error::Locked.to_string())?
 }
 #[tauri::command]
+async fn reset_vault(
+    state: State<'_, Session>,
+    device_id: String,
+    passphrase: String,
+) -> Result<(), String> {
+    let session = state.inner().clone();
+    let secret = Zeroizing::new(passphrase);
+    tauri::async_runtime::spawn_blocking(move || {
+        let (epoch, root, challenge) = {
+            let guard = session.vault.lock().map_err(|_| Error::Locked.to_string())?;
+            let epoch = session.lease.current(Instant::now()).map_err(|e| e.to_string())?;
+            let (opened_epoch, vault) = guard.as_ref().ok_or_else(|| Error::Locked.to_string())?;
+            if *opened_epoch != epoch { return Err(Error::Locked.to_string()); }
+            let root = device::resolve(&device_id).map_err(|e| e.to_string())?;
+            if root.as_path() != vault.root() { return Err(Error::Denied.to_string()); }
+            let challenge = vault.reset_challenge().map_err(|e| e.to_string())?;
+            (epoch, root, challenge)
+        };
+        Vault::authorize_reset(&challenge, secret.as_bytes())
+            .map_err(|_| "Passphrase not accepted. Nothing was deleted.".to_string())?;
+        let mut guard = session.vault.lock().map_err(|_| Error::Locked.to_string())?;
+        let (opened_epoch, vault) = guard.as_ref().ok_or_else(|| Error::Locked.to_string())?;
+        if *opened_epoch != epoch
+            || session.lease.current(Instant::now()).map_err(|e| e.to_string())? != epoch
+            || device::resolve(&device_id).ok().as_deref() != Some(root.as_path())
+            || vault.reset_challenge().map_err(|e| e.to_string())? != challenge
+        {
+            return Err("Device changed during reset. Nothing was deleted.".into());
+        }
+        if !session.lease.valid(epoch, Instant::now()) {
+            return Err(Error::Locked.to_string());
+        }
+        session.lease.begin().map_err(|e| e.to_string())?;
+        if let Ok(mut key) = session.requesty_key.lock() { *key = None; }
+        if let Ok(broker) = session.broker.lock() {
+            if let Some(broker) = broker.as_ref() { broker.revoke(); }
+        }
+        let (_, vault) = guard.take().ok_or_else(|| Error::Locked.to_string())?;
+        drop(guard);
+        if device::resolve(&device_id).ok().as_deref() != Some(root.as_path()) {
+            return Err("Device changed during reset. The vault is locked; nothing was deleted.".into());
+        }
+        vault.delete_verified().map_err(|_| "Reset could not finish. Check the USB before creating a new vault.".to_string())
+    })
+    .await
+    .map_err(|_| Error::Storage.to_string())?
+}
+#[tauri::command]
 fn lock(state: State<'_, Session>) -> Result<(), String> {
     let session = state.inner().clone();
     let revoked = session.lease.begin().map_err(|e| e.to_string())?;
@@ -313,6 +361,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             devices,
             unlock,
+            reset_vault,
             lock,
             snapshot,
             session_alive,

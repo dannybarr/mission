@@ -9,6 +9,7 @@ import {
   Compass,
   Database,
   FileText,
+  Flag,
   Fingerprint,
   History,
   Inbox,
@@ -83,6 +84,16 @@ export function App() {
     [agentView, setAgentView] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
+  const [wipeArmed, setWipeArmed] = useState(false);
+  const [wipePass, setWipePass] = useState("");
+  const [wipePhrase, setWipePhrase] = useState("");
+  useEffect(() => {
+    if (page !== "Security") {
+      setWipeArmed(false);
+      setWipePass("");
+      setWipePhrase("");
+    }
+  }, [page]);
   const [connectionConfig, setConnectionConfig] = useState("");
   useEffect(() => {
     setConnectionConfig("");
@@ -191,6 +202,9 @@ export function App() {
     setRevisions([]);
     setPage("Overview");
     setOnboarding(false);
+    setWipeArmed(false);
+    setWipePass("");
+    setWipePhrase("");
     setConnectionConfig("");
     setMobileNav(false);
   }
@@ -207,6 +221,23 @@ export function App() {
       setError(
         "The interface is locked. Close the desktop app to ensure its session is stopped.",
       );
+    }
+  }
+  async function resetVault(event: FormEvent) {
+    event.preventDefault();
+    if (demo || !selectedDevice || !wipeArmed || wipePhrase !== "RESET") return;
+    setBusy(true);
+    setError("");
+    try {
+      await bridge.resetVault(selectedDevice.id, wipePass);
+      const found = await bridge.devices().catch(() => []);
+      clear();
+      setAvailable(found);
+    } catch (err) {
+      setWipePass("");
+      setError(typeof err === "string" ? err : "Reset failed. Check the USB and try again.");
+    } finally {
+      setBusy(false);
     }
   }
   useEffect(() => {
@@ -438,9 +469,9 @@ export function App() {
                   </label>
                   {create && (
                     <p className="small">
-                      Create an encrypted vault on this device. Use at least 14
-                      characters. Recovery is not available in this development
-                      build.
+                      No Mission memory was found on this USB. Create an encrypted
+                      vault to begin onboarding. Use at least 14 characters.
+                      Recovery is not available in this development build.
                     </p>
                   )}
                   <button className="primary" disabled={busy}>
@@ -1554,6 +1585,54 @@ export function App() {
                   <p>{description}</p>
                 </div>
               ))}
+              <section className="danger-zone" aria-labelledby="danger-zone-heading">
+                <div className="danger-zone-heading">
+                  <span className="danger-flag"><Flag size={20} fill="currentColor" /></span>
+                  <div>
+                    <span className="eyebrow">Danger zone</span>
+                    <h2 id="danger-zone-heading">Wipe this Mission and start again</h2>
+                  </div>
+                </div>
+                <p>
+                  Delete all Mission memories, grants and history from this USB. Other files on the stick are left alone. This cannot be undone.
+                </p>
+                <p className="small">This deletes files; it is not a guaranteed secure erase of flash storage or information already shared with agents.</p>
+                {demo ? (
+                  <p className="small">Open and unlock a USB vault in the desktop app to reset it.</p>
+                ) : (
+                  <form className="danger-form" onSubmit={(event) => void resetVault(event)}>
+                    <label className="danger-switch">
+                      <input
+                        type="checkbox"
+                        role="switch"
+                        checked={wipeArmed}
+                        disabled={busy || !selectedDevice}
+                        onChange={(event) => {
+                          setWipeArmed(event.target.checked);
+                          setWipePass("");
+                          setWipePhrase("");
+                        }}
+                      />
+                      <span>I want to reset the Mission vault on {selectedDevice?.label ?? "this device"}</span>
+                    </label>
+                    {wipeArmed && (
+                      <div className="danger-confirmation">
+                        <label>
+                          Current vault passphrase
+                          <input type="password" autoComplete="off" required value={wipePass} onChange={(event) => setWipePass(event.target.value)} />
+                        </label>
+                        <label>
+                          Type RESET to confirm
+                          <input type="text" autoComplete="off" required value={wipePhrase} onChange={(event) => setWipePhrase(event.target.value)} />
+                        </label>
+                        <button className="danger-button" disabled={busy || wipePhrase !== "RESET" || !wipePass || !selectedDevice}>
+                          {busy ? "Resetting…" : "Wipe Mission vault"}
+                        </button>
+                      </div>
+                    )}
+                  </form>
+                )}
+              </section>
             </>
           )}
         </main>
