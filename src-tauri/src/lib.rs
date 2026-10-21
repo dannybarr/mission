@@ -9,6 +9,8 @@ pub mod device;
 pub mod mcp;
 pub mod model;
 pub mod policy;
+#[cfg(feature = "storage")]
+pub mod presence_monitor;
 #[cfg(feature = "desktop")]
 pub mod requesty;
 #[cfg(feature = "storage")]

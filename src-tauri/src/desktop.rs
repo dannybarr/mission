@@ -3,7 +3,7 @@ use crate::{
     model::Item,
     policy::Grant,
     session::Lease,
-    vault::{Snapshot, Vault},
+    vault::{Presence, Snapshot, Vault},
     Error,
 };
 use std::{
@@ -17,9 +17,40 @@ use zeroize::Zeroizing;
 #[derive(Default, Clone)]
 struct Session {
     vault: Arc<Mutex<Option<(u64, Vault)>>>,
+    presence: Arc<Mutex<Option<(u64, Arc<Presence>)>>>,
     lease: Arc<Lease>,
     broker: Arc<Mutex<Option<Arc<crate::mcp::Broker>>>>,
     requesty_key: Arc<Mutex<Option<(u64, Zeroizing<String>)>>>,
+}
+fn revoke_epoch(state: &Session, epoch: u64) {
+    state.lease.invalidate(epoch);
+    if let Ok(mut presence) = state.presence.lock() {
+        if presence.as_ref().is_some_and(|(id, _)| *id == epoch) {
+            *presence = None;
+        }
+    }
+    if let Ok(mut key) = state.requesty_key.lock() {
+        if key.as_ref().is_some_and(|(id, _)| *id == epoch) {
+            *key = None;
+        }
+    }
+    if let Ok(mut vault) = state.vault.try_lock() {
+        if vault.as_ref().is_some_and(|(id, _)| *id == epoch) {
+            *vault = None;
+        }
+    }
+}
+fn monitor_once(state: &Session) {
+    let current = state
+        .presence
+        .lock()
+        .ok()
+        .and_then(|presence| presence.as_ref().map(|(epoch, proof)| (*epoch, proof.clone())));
+    if let Some((epoch, proof)) = current {
+        if !crate::presence_monitor::check_and_renew(&state.lease, epoch, &proof) {
+            revoke_epoch(state, epoch);
+        }
+    }
 }
 // A failed presence check destroys the session. Never allow a stale handle after reconnect.
 fn with_vault<T>(
@@ -44,7 +75,7 @@ fn with_epoch_vault<T>(
     if guard.as_ref().is_none_or(|(_, v)| v.check().is_err())
         || !state.lease.valid(epoch, Instant::now())
     {
-        state.lease.invalidate(epoch);
+        revoke_epoch(state, epoch);
         *guard = None;
         return Err(Error::Locked.to_string());
     }
@@ -52,7 +83,7 @@ fn with_epoch_vault<T>(
     if guard.as_ref().is_none_or(|(_, v)| v.check().is_err())
         || !state.lease.valid(epoch, Instant::now())
     {
-        state.lease.invalidate(epoch);
+        revoke_epoch(state, epoch);
         *guard = None;
         return Err(Error::Locked.to_string());
     }
@@ -74,6 +105,7 @@ async fn unlock(
     let secret = Zeroizing::new(passphrase);
     let session = state.inner().clone();
     let epoch = session.lease.begin().map_err(|e| e.to_string())?;
+    *session.presence.lock().map_err(|_| Error::Locked.to_string())? = None;
     if let Ok(mut key) = session.requesty_key.lock() { *key = None; }
     tauri::async_runtime::spawn_blocking(move || {
         let mut guard = session
@@ -96,11 +128,14 @@ async fn unlock(
             return Err(Error::Locked.to_string());
         }
         vault.check().map_err(|e| e.to_string())?;
+        let presence = Arc::new(vault.presence());
+        let mut presence_guard = session.presence.lock().map_err(|_| Error::Locked.to_string())?;
         session
             .lease
             .activate(epoch, Instant::now())
             .map_err(|e| e.to_string())?;
         *guard = Some((epoch, vault));
+        *presence_guard = Some((epoch, presence));
         Ok(())
     })
     .await
@@ -140,6 +175,7 @@ async fn reset_vault(
             return Err(Error::Locked.to_string());
         }
         session.lease.begin().map_err(|e| e.to_string())?;
+        if let Ok(mut presence) = session.presence.lock() { *presence = None; }
         if let Ok(mut key) = session.requesty_key.lock() { *key = None; }
         if let Ok(broker) = session.broker.lock() {
             if let Some(broker) = broker.as_ref() { broker.revoke(); }
@@ -158,6 +194,7 @@ async fn reset_vault(
 fn lock(state: State<'_, Session>) -> Result<(), String> {
     let session = state.inner().clone();
     let revoked = session.lease.begin().map_err(|e| e.to_string())?;
+    if let Ok(mut presence) = session.presence.lock() { *presence = None; }
     if let Ok(mut key) = session.requesty_key.lock() { *key = None; }
     if let Ok(broker) = session.broker.lock() {
         if let Some(broker) = broker.as_ref() {
@@ -342,19 +379,7 @@ pub fn run() {
     let watcher = session.clone();
     thread::spawn(move || loop {
         thread::sleep(Duration::from_millis(200));
-        if let Ok(mut guard) = watcher.vault.try_lock() {
-            if let Some((epoch, vault)) = guard.as_ref() {
-                let epoch = *epoch;
-                if !watcher.lease.valid(epoch, Instant::now())
-                    || vault.check().is_err()
-                    || watcher.lease.renew(epoch, Instant::now()).is_err()
-                {
-                    watcher.lease.invalidate(epoch);
-                    if let Ok(mut key) = watcher.requesty_key.lock() { *key = None; }
-                    *guard = None;
-                }
-            }
-        }
+        monitor_once(&watcher);
     });
     tauri::Builder::default()
         .manage(session)

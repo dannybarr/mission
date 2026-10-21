@@ -15,6 +15,22 @@ pub struct Vault {
     manifest_bytes: Vec<u8>,
     pub(super) connection: Connection,
 }
+// The watchdog checks this proof without waiting for the database connection.
+pub(crate) struct Presence {
+    root: PathBuf,
+    manifest_bytes: Vec<u8>,
+}
+impl Presence {
+    pub(crate) fn check(&self) -> Result<()> {
+        let dir = self.root.join("mission");
+        device::check_child(&self.root, &dir)?;
+        device::check_child(&self.root, &dir.join("manifest.json"))?;
+        if read_manifest(&dir.join("manifest.json"))? != self.manifest_bytes {
+            return Err(Error::Locked);
+        }
+        Ok(())
+    }
+}
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Audit {
@@ -145,21 +161,22 @@ impl Vault {
         Ok(vault)
     }
     pub fn check(&self) -> Result<()> {
+        self.presence().check()?;
         let dir = self.root.join("mission");
-        device::check_child(&self.root, &dir)?;
-        for name in ["manifest.json", "vault.db"] {
-            device::check_child(&self.root, &dir.join(name))?;
-        }
+        device::check_child(&self.root, &dir.join("vault.db"))?;
         for name in ["vault.db-journal", "vault.db-wal", "vault.db-shm"] {
             let path = dir.join(name);
             if path.try_exists()? {
                 device::check_child(&self.root, &path)?;
             }
         }
-        if read_manifest(&dir.join("manifest.json"))? != self.manifest_bytes {
-            return Err(Error::Locked);
-        }
         Ok(())
+    }
+    pub(crate) fn presence(&self) -> Presence {
+        Presence {
+            root: self.root.clone(),
+            manifest_bytes: self.manifest_bytes.clone(),
+        }
     }
     pub(crate) fn root(&self) -> &Path {
         &self.root
