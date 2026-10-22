@@ -141,6 +141,7 @@ export type Audit = {
 export type Snapshot = {
   items: MemoryItem[];
   grants: Grant[];
+  connectedAgents: string[];
   proposals: Proposal[];
   audit: Audit[];
 };

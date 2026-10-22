@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowDownLeft,
+  ArrowLeft,
   ArrowUpRight,
   BookOpen,
   Check,
@@ -64,7 +65,15 @@ const navigation = [
   ["Sources", Link2],
   ["Security", Shield],
 ] as const;
-const empty: Snapshot = { items: [], grants: [], proposals: [], audit: [] };
+const agentMarks: Record<string, string> = {
+  "Claude Desktop": "/assets/agents/claude.svg",
+  Codex: "/assets/agents/openai.svg",
+  ChatGPT: "/assets/agents/openai.svg",
+  Cursor: "/assets/agents/cursor.png",
+  "Gemini CLI": "/assets/agents/gemini.png",
+  Gemini: "/assets/agents/gemini.png",
+};
+const empty: Snapshot = { items: [], grants: [], connectedAgents: [], proposals: [], audit: [] };
 
 export function App() {
   const [data, setData] = useState<Snapshot>(empty),
@@ -328,7 +337,7 @@ export function App() {
   function startDemo() {
     epoch.current++;
     setDemo(true);
-    setData({ items: [], grants: [], proposals: [], audit: [] });
+    setData({ items: [], grants: [], connectedAgents: [], proposals: [], audit: [] });
     setOpen(true);
     setError("");
   }
@@ -971,7 +980,15 @@ export function App() {
                   {item ? (
                     <>
                       <div className="detail-top">
-                        <span className="tag">{item.type}</span>
+                        <div className="detail-leading">
+                          <button className="text-button detail-back" onClick={() => {
+                            setSelected(null);
+                            document.querySelector(".memory-layout")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }} aria-label="Back to all memory">
+                            <ArrowLeft size={16} /> Back to memory
+                          </button>
+                          <span className="tag">{item.type}</span>
+                        </div>
                         <button
                           className="text-button"
                           onClick={() => setEditor({ ...item })}
@@ -1191,11 +1208,15 @@ export function App() {
                       key={a}
                       onClick={() => setAgent(a)}
                     >
-                      <span className="agent-avatar">{a.slice(0, 1)}</span>
+                      <span className={"agent-avatar" + (data.connectedAgents.includes(a) ? " connected" : "")}>
+                        {agentMarks[a] ? <img src={agentMarks[a]} alt="" /> : a.slice(0, 1)}
+                      </span>
                       <span>
                         {a}
                         <small>
-                          {agentSetup(a).supported
+                          {data.connectedAgents.includes(a)
+                            ? "Connected · user confirmed"
+                            : agentSetup(a).supported
                             ? "Local MCP · read pilot"
                             : "Permissions only · adapter pending"}
                         </small>
@@ -1216,6 +1237,20 @@ export function App() {
                         : "Connection not configured"}
                     </span>
                   </div>
+                  <label className="connection-toggle">
+                    <span><strong>Connected</strong><small>Mark this after you install and successfully test the MCP connection in {agent}. This is your confirmation, not an automatic live check.</small></span>
+                    <input type="checkbox" checked={data.connectedAgents.includes(agent)} disabled={busy || (!demo && !agentSetup(agent).supported)} onChange={async (e) => {
+                      const connected = e.target.checked;
+                      if (demo) {
+                        setData((d) => ({...d, connectedAgents: connected ? [...d.connectedAgents, agent] : d.connectedAgents.filter((a) => a !== agent)}));
+                        return;
+                      }
+                      setBusy(true);
+                      try { await bridge.setAgentConnected(agent, connected); await refresh(); }
+                      catch { setError("Could not save this connection status to your device."); }
+                      finally { setBusy(false); }
+                    }} />
+                  </label>
                   <div className="mcp-setup">
                     <h3>Connect {agent}</h3>
                     <p>{agentSetup(agent).instructions}</p>
@@ -1233,6 +1268,10 @@ export function App() {
                         setError("");
                         try {
                           const config = await bridge.mcpConfig(agent);
+                          if (data.connectedAgents.includes(agent)) {
+                            await bridge.setAgentConnected(agent, false);
+                            await refresh();
+                          }
                           if (generation === epoch.current)
                             setConnectionConfig(
                               formatAgentConfig(agent, config),

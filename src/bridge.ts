@@ -24,6 +24,9 @@ export async function saveItem(item: MemoryItem): Promise<void> {
 export async function saveGrant(grant: Grant): Promise<void> {
   return invoke("save_grant", { grant });
 }
+export async function setAgentConnected(agent: string, connected: boolean): Promise<void> {
+  return invoke("set_agent_connected", { agent, connected });
+}
 export async function revokeAll(): Promise<void> {
   await invoke("revoke_all");
 }

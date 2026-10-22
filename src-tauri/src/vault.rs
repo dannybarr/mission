@@ -43,6 +43,8 @@ pub struct Audit {
 pub struct Snapshot {
     items: Vec<Item>,
     grants: Vec<Grant>,
+    #[serde(rename = "connectedAgents")]
+    connected_agents: Vec<String>,
     proposals: Vec<crate::review::Proposal>,
     audit: Vec<Audit>,
 }
@@ -158,6 +160,8 @@ impl Vault {
         };
         vault.check()?;
         vault.prepare_review()?;
+        // MCP keys expire with the session; a returning card needs a new confirmation.
+        vault.connection.execute("DELETE FROM metadata WHERE name LIKE 'connected_agent:%'", [])?;
         Ok(vault)
     }
     pub fn check(&self) -> Result<()> {
@@ -262,14 +266,34 @@ impl Vault {
             })
         })?;
         let audit = rows.collect::<std::result::Result<Vec<_>, _>>()?;
+        let mut stmt = self.connection.prepare("SELECT name FROM metadata WHERE name LIKE 'connected_agent:%' AND value='1'")?;
+        let connected_agents = stmt.query_map([], |r| r.get::<_, String>(0))?
+            .map(|row| row.map(|name| name.trim_start_matches("connected_agent:").to_owned()))
+            .collect::<std::result::Result<Vec<_>, _>>()?;
         let proposals = self.proposals()?;
         self.check()?;
         Ok(Snapshot {
             items,
             grants,
+            connected_agents,
             proposals,
             audit,
         })
+    }
+    pub fn set_agent_connected(&mut self, agent: &str, connected: bool) -> Result<()> {
+        self.check()?;
+        if agent.is_empty() || agent.len() > 100 || agent.contains(':') { return Err(Error::Invalid); }
+        let tx = self.connection.transaction()?;
+        let name = format!("connected_agent:{agent}");
+        if connected {
+            tx.execute("INSERT OR REPLACE INTO metadata(name,value) VALUES (?1,'1')", [&name])?;
+        } else {
+            tx.execute("DELETE FROM metadata WHERE name=?1", [&name])?;
+        }
+        tx.execute("INSERT INTO audit(at,actor,action) VALUES (?1,'owner',?2)",
+            params![Utc::now().to_rfc3339(), if connected { "Marked agent connected" } else { "Marked agent disconnected" }])?;
+        tx.commit()?;
+        self.check()
     }
     pub fn owner_item(&self, id: uuid::Uuid) -> Result<Item> {
         self.check()?;
@@ -361,6 +385,7 @@ impl Vault {
         self.check()?;
         let tx = self.connection.transaction()?;
         tx.execute("DELETE FROM grants", [])?;
+        tx.execute("DELETE FROM metadata WHERE name LIKE 'connected_agent:%'", [])?;
         tx.execute("INSERT INTO audit(at,actor,action) VALUES (?1,'owner','Revoked all agent permissions')",[Utc::now().to_rfc3339()])?;
         tx.commit()?;
         self.check()
@@ -415,6 +440,52 @@ mod tests {
         assert!(v.agent_get("Claude Desktop",id).is_err());
         assert!(v.agent_search("Claude Desktop","",0).unwrap()["items"].as_array().unwrap().is_empty());
         v.revoke_all().unwrap();assert!(v.agent_search("Claude Desktop","",0).is_err());
+    }
+    #[test]
+    fn offline_concept_search_finds_gym_routine_but_never_hidden_memory() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut v = Vault::create(dir.path(), PASS).unwrap();
+        let mut gym = item();
+        gym.domain = "fitness".into();
+        gym.title = "How I exercise".into();
+        gym.body = "I am a regular gym goer. My split: Monday - Legs, Tuesday - Back and Biceps.".into();
+        let gym_id = gym.id;
+        v.save_item(gym).unwrap();
+        let mut hidden = item();
+        hidden.domain = "health".into();
+        hidden.title = "Secret training schedule".into();
+        hidden.body = "gym split workout routine training schedule Monday".into();
+        let hidden_id = hidden.id;
+        v.save_item(hidden).unwrap();
+        let grant: Grant = serde_json::from_value(serde_json::json!({
+            "agent":"Claude Desktop","domains":{"fitness":"read"},"ceiling":"personal",
+            "excludedIds":[],"excludedTags":[],"expiresAt":null
+        })).unwrap();
+        v.save_grant(grant).unwrap();
+        for query in ["gym split", "workout routine", "training schedule", "what do I train on Monday", "workout training fitness"] {
+            let found = v.agent_search("Claude Desktop", query, 0).unwrap();
+            let items = found["items"].as_array().unwrap();
+            assert_eq!(items.len(), 1, "query: {query}");
+            assert_eq!(items[0]["id"], gym_id.to_string());
+            assert!(!found.to_string().contains(&hidden_id.to_string()));
+            assert!(!found.to_string().contains("Secret"));
+            assert!(!found.to_string().contains("Legs"));
+        }
+        assert!(v.agent_search("Claude Desktop", "quarterly tax return", 0).unwrap()["items"].as_array().unwrap().is_empty());
+        assert!(v.agent_get("Claude Desktop", hidden_id).is_err());
+    }
+    #[test]
+    fn connection_confirmation_resets_with_session() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut v = Vault::create(dir.path(), PASS).unwrap();
+        v.set_agent_connected("Claude Desktop", true).unwrap();
+        assert!(v.snapshot().unwrap().connected_agents.contains(&"Claude Desktop".to_owned()));
+        drop(v);
+        let mut v = Vault::open(dir.path(), PASS).unwrap();
+        assert!(v.snapshot().unwrap().connected_agents.is_empty());
+        v.set_agent_connected("Claude Desktop", true).unwrap();
+        v.set_agent_connected("Claude Desktop", false).unwrap();
+        assert!(v.snapshot().unwrap().connected_agents.is_empty());
     }
     #[test]
     fn creates_reopens_and_rejects_wrong_key() {

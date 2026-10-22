@@ -819,6 +819,8 @@ kbd {
 .detail-top .text-button {
   font-size: 11px;
 }
+.detail-leading { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+.detail-back { display: inline-flex; align-items: center; gap: 5px; }
 .memory-detail h2 {
   font-size: 28px;
   line-height: 1.3;
@@ -957,6 +959,12 @@ kbd {
 .agent-row > svg {
   color: #8f9985;
 }
+.agent-avatar.connected { border: 2px solid #2c995a; box-shadow: 0 0 0 3px #d9f2e3; border-radius: 50%; }
+.agent-avatar img { width: 25px; height: 25px; object-fit: contain; }
+.connection-toggle { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 16px; margin: 16px 0; border: 1px solid var(--line); border-radius: 9px; background: #fafbf7; }
+.connection-toggle span { display: grid; gap: 4px; }
+.connection-toggle small { font-size: 12px; line-height: 1.4; max-width: 52ch; }
+.connection-toggle input { width: 20px; height: 20px; flex: none; accent-color: #2c995a; }
 .agent-settings {
   padding: 25px;
   border: 1px solid var(--line);

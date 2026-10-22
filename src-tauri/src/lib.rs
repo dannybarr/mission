@@ -1,5 +1,7 @@
 #[cfg(feature = "storage")]
 pub mod agent_access;
+#[cfg(feature = "storage")]
+pub(crate) mod local_search;
 pub mod crypto;
 #[cfg(feature = "desktop")]
 pub mod desktop;

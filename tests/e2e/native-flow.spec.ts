@@ -9,6 +9,7 @@ test("returning vault unlocks after a changed drive letter, then resets into onb
     mock.__mockDevices = [{ id: "E:\\", label: "Pilot USB", path: "E:\\", hasVault: true }];
     mock.__mockSession = false;
     mock.__mockItems = [memory];
+    mock.__mockConnected = [];
     mock.__TAURI_INTERNALS__ = {
       invoke: async (command: string, args: any) => {
         if (command === "devices") return mock.__mockDevices;
@@ -18,7 +19,11 @@ test("returning vault unlocks after a changed drive letter, then resets into onb
           if (args.create) mock.__mockItems = [];
           return;
         }
-        if (command === "snapshot") return { items: mock.__mockItems, grants: [], proposals: [], audit: [] };
+        if (command === "snapshot") return { items: mock.__mockItems, grants: [], connectedAgents: mock.__mockConnected, proposals: [], audit: [] };
+        if (command === "set_agent_connected") {
+          mock.__mockConnected = args.connected ? [args.agent] : [];
+          return;
+        }
         if (command === "session_alive") {
           if (!mock.__mockSession) throw "Locked";
           return;
@@ -42,6 +47,13 @@ test("returning vault unlocks after a changed drive letter, then resets into onb
   await page.getByRole("button", { name: "Unlock vault" }).click();
   await page.getByRole("button", { name: "Memory", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Existing pilot memory" })).toBeVisible();
+  await page.locator(".memory-row").first().click();
+  await expect(page.getByRole("button", { name: "Back to all memory" })).toBeVisible();
+  await page.getByRole("button", { name: "Back to all memory" }).click();
+  await expect(page.getByText("Choose a memory to read its story")).toBeVisible();
+  await page.getByRole("button", { name: "Agents", exact: true }).click();
+  await page.getByRole("checkbox", { name: /Connected/ }).check();
+  await expect(page.locator(".agent-row").first().locator(".agent-avatar.connected")).toBeVisible();
 
   await page.evaluate(() => {
     (window as any).__mockDevices = [];

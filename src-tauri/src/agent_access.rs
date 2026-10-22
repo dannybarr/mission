@@ -36,32 +36,25 @@ impl Vault {
         }
         let grant = self.agent_grant(agent)?;
         let now = Utc::now();
-        let query = query.to_lowercase();
         let mut stmt = self
             .connection
             .prepare("SELECT json FROM items ORDER BY id")?;
-        let mut matched = 0;
-        let mut results = Vec::new();
-        let mut more = false;
+        let mut ranked = Vec::new();
         for row in stmt.query_map([], |r| r.get::<_, String>(0))? {
             let item: Item = serde_json::from_str(&Zeroizing::new(row?))?;
-            if !grant.permits(&item, Level::Read, now)
-                || !(item.title.to_lowercase().contains(&query)
-                    || item.body.to_lowercase().contains(&query))
-            {
-                continue;
+            // Permission is checked before matching. Hidden text never enters a search score.
+            if grant.permits(&item, Level::Read, now) {
+                if let Some(score) = crate::local_search::score(&item, query) {
+                    ranked.push((score, item.id, item.title, item.domain, item.kind));
+                }
             }
-            if matched < offset {
-                matched += 1;
-                continue;
-            }
-            if results.len() == 20 {
-                more = true;
-                break;
-            }
-            // Search intentionally returns metadata only. Content requires a separately audited get.
-            results.push(serde_json::json!({"id":item.id,"title":item.title,"domain":item.domain,"type":item.kind,"version":item.version}));
         }
+        ranked.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+        let more = ranked.len() > offset.saturating_add(20);
+        let results: Vec<_> = ranked.into_iter().skip(offset).take(20).map(|(_, id, title, domain, kind)| {
+            // Search intentionally returns metadata only. Content requires a separately audited get.
+            serde_json::json!({"id":id,"title":title,"domain":domain,"type":kind})
+        }).collect();
         drop(stmt);
         self.connection.execute(
             "INSERT INTO audit(at,actor,action) VALUES (?1,?2,'Searched permitted memory')",

@@ -289,6 +289,10 @@ async fn save_grant(state: State<'_, Session>, grant: Grant) -> Result<(), Strin
     run_command(state.inner().clone(), move |v| v.save_grant(grant)).await
 }
 #[tauri::command]
+async fn set_agent_connected(state: State<'_, Session>, agent: String, connected: bool) -> Result<(), String> {
+    run_command(state.inner().clone(), move |v| v.set_agent_connected(&agent, connected)).await
+}
+#[tauri::command]
 async fn revoke_all(state: State<'_, Session>) -> Result<(), String> {
     if let Ok(broker) = state.broker.lock() {
         if let Some(broker) = broker.as_ref() {
@@ -392,6 +396,7 @@ pub fn run() {
             session_alive,
             save_item,
             save_grant,
+            set_agent_connected,
             revoke_all,
             mcp_config,
             set_requesty_key,
